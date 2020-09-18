@@ -10,18 +10,19 @@ import com.microsoft.applicationinsights.agent.bootstrap.configuration.Instrumen
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
 import org.junit.*;
+import org.junit.contrib.java.lang.system.*;
 
 import static org.junit.Assert.*;
 
 public class ConfigurationTest {
 
+    @Rule
+    public EnvironmentVariables envVars = new EnvironmentVariables();
+
     @Test
     public void shouldParse() throws IOException {
 
-        CharSource json = Resources.asCharSource(Resources.getResource("ApplicationInsights.json"), Charsets.UTF_8);
-        Moshi moshi = new Moshi.Builder().build();
-        JsonAdapter<Configuration> jsonAdapter = moshi.adapter(Configuration.class);
-        Configuration configuration = jsonAdapter.fromJson(json.read());
+        Configuration configuration = loadConfiguration();
 
         InstrumentationSettings instrumentationSettings = configuration.instrumentationSettings;
         PreviewConfiguration preview = instrumentationSettings.preview;
@@ -61,5 +62,22 @@ public class ConfigurationTest {
         assertEquals(900, preview.heartbeat.intervalSeconds);
         assertEquals(0, preview.jmxMetrics.size());
         assertEquals(0, preview.instrumentation.size());
+    }
+
+    @Test
+    public void shouldOverrideRoleNameWithEnvVar() throws IOException {
+        envVars.set("APPLICATIONINSIGHTS_ROLE_NAME", "testrolename");
+
+        Configuration configuration = loadConfiguration();
+        ConfigurationBuilder.overlayEnvVars(configuration);
+
+        assertEquals("testrolename", configuration.instrumentationSettings.preview.roleName);
+    }
+
+    private static Configuration loadConfiguration() throws IOException {
+        CharSource json = Resources.asCharSource(Resources.getResource("ApplicationInsights.json"), Charsets.UTF_8);
+        Moshi moshi = new Moshi.Builder().build();
+        JsonAdapter<Configuration> jsonAdapter = moshi.adapter(Configuration.class);
+        return jsonAdapter.fromJson(json.read());
     }
 }

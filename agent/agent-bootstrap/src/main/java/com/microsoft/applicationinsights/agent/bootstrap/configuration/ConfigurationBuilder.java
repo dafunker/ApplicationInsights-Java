@@ -21,7 +21,6 @@
 
 package com.microsoft.applicationinsights.agent.bootstrap.configuration;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -38,7 +37,6 @@ import com.microsoft.applicationinsights.agent.bootstrap.diagnostics.Diagnostics
 import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
 import okio.Buffer;
-import okio.Okio;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,8 +55,13 @@ public class ConfigurationBuilder {
     private static final List<ConfigurationMessage> configurationMessages = new CopyOnWriteArrayList<>();
 
     public static Configuration create(Path agentJarPath) throws IOException {
-
         Configuration config = loadConfigurationFile(agentJarPath);
+        overlayEnvVars(config);
+        return config;
+    }
+
+    // visible for testing
+    static void overlayEnvVars(Configuration config) {
         PreviewConfiguration preview = config.instrumentationSettings.preview;
 
         preview.roleName = overlayWithEnvVar(APPLICATIONINSIGHTS_ROLE_NAME, WEBSITE_SITE_NAME, preview.roleName);
@@ -80,8 +83,6 @@ public class ConfigurationBuilder {
             classCountJmxMetric.display = "Loaded Class Count";
             preview.jmxMetrics.add(classCountJmxMetric);
         }
-
-        return config;
     }
 
     private static boolean jmxMetricExisted(List<InstrumentationSettings.JmxMetric> jmxMetrics, String objectName, String attribute) {
